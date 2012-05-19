@@ -189,6 +189,7 @@
           (cond
             ((zero? res) res-str)
             ((equal? res DB_BUFFER_SMALL) (try (* count 2)))
+            ((equal? res DB_NOTFOUND) (error "Key missing" key))
             (else (error "Unknown error")))))
       (try +default-allocation+))))
 
@@ -210,6 +211,28 @@
         (cond
           ((zero? res) #t)
           (else (error "Some sort of error")))))))
+
+(define db-close!
+  (let ((int-db-close (foreign-lambda*
+                       int ((c-pointer db) (unsigned-int flags))
+                       "C_return(((DB*)db)->close(db, flags));")))
+    (lambda (db #!key (flags 0))
+      (let ((res (int-db-close (berkeley-db-ptr db) flags)))
+        (cond
+         ((zero? res)
+          (berkeley-db-ptr-set! db #f)
+          #t)
+         (else (error "Some sort of error")))))))
+
+(define db-sync
+  (let ((int-db-sync (foreign-lambda*
+                      int ((c-pointer db) (unsigned-int flags))
+                      "C_return(((DB*)db)->sync(db, flags));")))
+    (lambda (db #!key (flags 0))
+      (let ((res (int-db-sync (berkeley-db-ptr db) flags)))
+        (cond
+         ((zero? res) #t)
+         (else (error "Some sort of error")))))))
 
 ;; cursors
 (define-record berkeley-db-cursor ptr db)
@@ -257,4 +280,17 @@
         (cond
          ((zero? res) (cons key-res data-res))
          ((equal? res DB_NOTFOUND) '())
+         (else (error "Some sort of error")))))))
+
+(define db-cursor-close!
+  (let ((int-db-cursor-close
+         (foreign-lambda*
+          int ((c-pointer cursor))
+          "C_return(((DBC*)cursor)->get(cursor));")))
+    (lambda (cursor)
+      (let* ((res (int-db-cursor-get/next
+                   (berkeley-db-cursor-ptr cursor)
+                   key data flags)))
+        (cond
+         ((zero? res) #t)
          (else (error "Some sort of error")))))))
