@@ -1,0 +1,7 @@
+(compile berkeleydb.scm -shared -o berkeleydb.so -J -ldb)
+(compile berkeleydb.import.scm -shared -O2 -d0)
+
+(install-extension
+  'berkeleydb
+  '("berkeleydb.so" "berkeleydb.import.so")
+  '((version 1.0)))

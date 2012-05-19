@@ -286,11 +286,56 @@
   (let ((int-db-cursor-close
          (foreign-lambda*
           int ((c-pointer cursor))
-          "C_return(((DBC*)cursor)->get(cursor));")))
+          "C_return(((DBC*)cursor)->close(cursor));")))
     (lambda (cursor)
-      (let* ((res (int-db-cursor-get/next
-                   (berkeley-db-cursor-ptr cursor)
-                   key data flags)))
+      (let* ((res (int-db-cursor-close (berkeley-db-cursor-ptr cursor))))
         (cond
          ((zero? res) #t)
          (else (error "Some sort of error")))))))
+
+(define db-cursor-delete
+  (let ((int-db-cursor-delete
+         (foreign-lambda*
+          int ((c-pointer cursor) (unsigned-int flags))
+          "C_return(((DBC*)cursor)->del(cursor, flags));")))
+    (lambda (cursor #!key (flags 0))
+      (let* ((res (int-db-cursor-delete (berkeley-db-cursor-ptr cursor) flags)))
+        (cond
+         ((zero? res) #t)
+         (else (error "Some sort of error")))))))
+
+(define (call-with-db filename func #!key (flags DB_CREATE)
+                                                (type DB_HASH))
+  (let* ((db (db-create))
+         (opening (db-open! db filename flags: flags type: type))
+         (res (func db)))
+    (db-close! db)
+    res))
+
+(define (call-with-fresh-db filename func #!key (flags DB_CREATE)
+                                                (type DB_HASH))
+  (delete-file filename)
+  (let* ((db (db-create))
+         (opening (db-open! db filename flags: flags type: type))
+         (res (func db)))
+    (db-close! db)
+    res))
+
+(define (db->alist db) 
+  (let ((cursor (db-cursor db)))
+    (let iter ((current '()) (last (db-cursor-get/next cursor)))
+      (if (null? last)
+          (begin
+            (db-cursor-close! cursor)
+            (reverse current))
+          (iter (cons
+                 (cons (with-input-from-string (car last) read)
+                       (with-input-from-string (cdr last) read))
+                 current) (db-cursor-get/next cursor))))))
+
+(define (alist->db lst db)
+  (for-each
+   (lambda (x)
+     (db-put! db (with-output-to-string (lambda () (write (car x))))
+                 (with-output-to-string (lambda () (write (cdr x))))))
+   lst))

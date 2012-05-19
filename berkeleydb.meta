@@ -1,0 +1,5 @@
+((files "berkeleydb.scm" "berkeleydb-src.scm" "berkeleydb.setup" "berkeleydb.meta")
+ (category db)
+ (license "BSD")
+ (synopsis "Berkeley DB binding")
+)
