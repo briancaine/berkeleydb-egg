@@ -314,7 +314,8 @@
 
 (define (call-with-fresh-db filename func #!key (flags DB_CREATE)
                                                 (type DB_HASH))
-  (delete-file filename)
+  (when (file-exists? filename)
+    (delete-file filename))
   (let* ((db (db-create))
          (opening (db-open! db filename flags: flags type: type))
          (res (func db)))
