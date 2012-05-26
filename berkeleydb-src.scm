@@ -193,6 +193,18 @@
             (else (error "Unknown error")))))
       (try +default-allocation+))))
 
+(define (condition-message x)
+  (get-condition-property x 'exn 'message))
+
+(define (db-get/default db key default . rest)
+  (handle-exceptions
+   exn
+   ;; is this how you're supposed to raise an exception? beats me
+   (if (equal? (condition-message exn) "Key missing")
+       default
+       (abort exn))
+   (apply db-get db key rest)))
+
 (define db-delete!
   (let ((int-db-del
            (foreign-lambda* int
